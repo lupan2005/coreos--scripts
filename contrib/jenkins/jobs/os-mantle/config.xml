@@ -22,6 +22,21 @@
       <autoRebuild>false</autoRebuild>
       <rebuildDisabled>false</rebuildDisabled>
     </com.sonyericsson.rebuild.RebuildSettings>
+    <com.synopsys.arc.jenkinsci.plugins.jobrestrictions.jobs.JobRestrictionProperty plugin="job-restrictions@0.4"/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>GOVERSION</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>1.6.2</string>
+              <string>1.5.3</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
   </properties>
   <scm class="hudson.plugins.git.GitSCM" plugin="git@2.4.0">
     <configVersion>2</configVersion>
@@ -54,12 +69,22 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>docker run --rm -v &quot;$PWD&quot;:/usr/src/myapp -w /usr/src/myapp -e GOMAXPROCS=4 golang:1.6.2 ./build
-</command>
+      <command>#!/bin/bash
+rm -f Dockerfile
+tee Dockerfile &lt;&lt; EOF
+FROM golang:${GOVERSION}
+RUN apt-get update -qq &amp;&amp; apt-get -y install bzip2
+EOF
+docker build -t golang_tmp .</command>
     </hudson.tasks.Shell>
     <hudson.tasks.Shell>
-      <command>docker run --rm -v &quot;$PWD&quot;:/usr/src/myapp -w /usr/src/myapp -e GOMAXPROCS=4 golang:1.6.2 ./test
-</command>
+      <command>docker run --rm -v &quot;$PWD&quot;:/usr/src/myapp -w /usr/src/myapp -e GOMAXPROCS=4 golang_tmp ./build</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>docker run --rm -v &quot;$PWD&quot;:/usr/src/myapp -w /usr/src/myapp -e GOMAXPROCS=4 golang_tmp ./test</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>docker rmi golang_tmp</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
